@@ -1,0 +1,62 @@
+AWSTemplateFormatVersion: 2010-09-09
+Transform: S3Objects
+Resources:
+  S3Bucket:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: false
+        BlockPublicPolicy: false
+        RestrictPublicBuckets: false
+        IgnorePublicAcls: false
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: error.html
+  BucketPolicy:
+    Type: 'AWS::S3::BucketPolicy'
+    Properties:
+      PolicyDocument:
+        Id: MyPolicy
+        Version: 2012-10-17
+        Statement:
+          - Sid: PublicReadForGetBucketObjects
+            Effect: Allow
+            Principal: '*'
+            Action: 's3:GetObject'
+            Resource: !Join 
+              - ''
+              - - 'arn:aws:s3:::'
+                - !Ref S3Bucket
+                - /*
+      Bucket: !Ref S3Bucket
+  myDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Origins:
+        - DomainName: !GetAtt S3Bucket.DomainName
+          Id: S3Origin
+          S3OriginConfig:
+            OriginAccessIdentity: ''
+        CNAMEs:
+          - brunollp.com
+        Enabled: 'true'
+        DefaultRootObject: index.html
+        DefaultCacheBehavior:
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6 ## Cache Optimized
+          TargetOriginId: S3Origin
+          ViewerProtocolPolicy: redirect-to-https
+        PriceClass: PriceClass_All
+        ViewerCertificate:
+          CloudFrontDefaultCertificate: 'true'
+Outputs:
+  BucketName:
+    Description: Name of S3 bucket to hold website content
+    Value: !Ref S3Bucket
+    Export:
+      Name: !Sub '${AWS::StackName}-WebsiteBucketName'
+  BucketDomain:
+    Description: Domain name of S3 bucket to hold website content
+    Value: !GetAtt S3Bucket.DomainName
+    Export:
+      Name: !Sub '${AWS::StackName}-WebsiteBucketDomain'
